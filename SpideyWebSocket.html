@@ -1,0 +1,162 @@
+<html>
+<head>
+  <title>WebSocket Echo Client</title>
+  <meta charset="UTF-8" />
+  <script>
+var canvas, context;
+var selfPainter = {};
+var participantsPool = [];
+var painter = function(user, isSender) {
+	this.user = user;
+	this.isSender = isSender;
+	this.isPaintStarted = false;	
+
+
+this.startDraw = function(x, y) {
+	// The event handler works like a drawing pencil which tracks the mouse 
+	// movements. We start drawing a path made up of lines.
+	if (!this.isPaintStarted) {
+    	context.beginPath();
+        context.moveTo(x, y);
+        this.isPaintStarted = true;
+        this.lastX = x;
+        this.lastY = y;
+        if(!this.isSender) {
+        	socket.send(this.user + ',' + 'Start' + ',' + x + ',' + y)
+        }
+    }
+}
+
+this.movePencil = function(x, y) {
+	if(this.isPaintStarted) {
+		context.moveTo(this.lastX, this.lastY);
+        this.lastX = x;
+        this.lastY = y;
+    	context.lineTo(x, y);   // I guess pageX and pageY are working fine
+        context.stroke();
+        if(!this.isSender) {
+        	socket.send(this.user + ',' + 'Move' + ',' + x + ',' + y)
+        }
+    }
+}
+
+this.stopDraw = function(x, y) {
+    this.lastX = x;
+    this.lastY = y;
+	this.isPaintStarted = false ;
+    if(!this.isSender) {
+    	socket.send(this.user + ',' +  'Stop' + ',' + x + ',' + y);
+    }
+}
+}
+
+
+    if(window.addEventListener) {
+        window.addEventListener('load', function () {
+
+      // Initialization sequence.
+      function init () {
+        // Find the canvas element.
+        canvas = document.getElementById('myCanvas');
+        if (!canvas) {
+            alert('Error: I cannot find the canvas element!');
+            return;
+         }
+
+        if (!canvas.getContext) {
+          alert('Error: no canvas.getContext!');
+          return;
+        }
+
+        // Get the 2D canvas context.
+        context = canvas.getContext('2d');
+        if (!context) {
+          alert('Error: failed to getContext!');
+          return;
+        }
+        
+        selfPainter = new painter();
+
+        // Attach the mousemove event handler.
+        canvas.addEventListener('mousedown', mouseDownEvent, false);
+        canvas.addEventListener('mousemove', mouseMoveEvent, false);
+        canvas.addEventListener('mouseup', mouseUpEvent,false) ;
+      }
+      
+    function mouseDownEvent(ev) {
+    	selfPainter.startDraw(ev.pageX,ev.pageY);
+    }  
+
+      
+    function mouseMoveEvent(ev) {
+    	selfPainter.movePencil(ev.pageX,ev.pageY);
+    }
+    
+          
+    function mouseUpEvent(ev) {
+    	selfPainter.stopDraw(ev.pageX,ev.pageY);
+    }      
+      
+    function getUser(userId) {
+    	for (var i = 0; i < participantsPool.length; i++) {
+    		if (participantsPool[i].user == userId) {
+    			return participantsPool[i];
+    		}
+    	}
+    	var newUser = new painter(userId, true);
+    	participantsPool.push(newUser);
+    	return newUser;
+    }
+    
+    socket = new WebSocket("ws://10.0.0.7:8080", "echo-protocol");
+    if (socket == undefined)
+    {
+	document.getElementById('errMessage').innerHtml = 'Web Socket Not Supported By your browser';
+    }
+    socket.addEventListener("open", function(event) {
+		selfPainter = new painter(event.timeStamp,false);
+		participantsPool.push(selfPainter);
+    });
+
+        // Display messages received from the server
+        socket.addEventListener("message", function(event) {
+        	var evt = {};
+        	var point = event.data.split(',');
+        	
+			var sender = getUser(point[0]);
+        	var evtType = point[1];
+        	
+
+        	if(evtType === 'Start')
+        	{
+        		sender.startDraw(point[2], point[3]);
+        	}
+        	else if(evtType === 'Move')
+        	{
+        		sender.movePencil(point[2], point[3]);
+        	}
+        	else if(evtType === 'Stop')
+        	{
+	        	sender.stopDraw(point[2], point[3]);
+	        }
+        });
+
+        // Display any errors that occur
+        socket.addEventListener("error", function(event) {
+        		document.getElementById('errMessage').innerHtml = 'Web Socket Not Supported By your browser';
+        });
+
+        socket.addEventListener("close", function(event) {
+        });
+      
+      init();
+    }, false); 
+}
+  </script>
+</head>
+<body>
+	<div id = "errMsg">
+  		<canvas id = "myCanvas" width = "500" height = "500">Canvas is not supported by your browser</canvas>
+  	</div>
+</body>
+</html>

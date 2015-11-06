@@ -81,8 +81,31 @@ this.stopDraw = function(x, y) {
         canvas.addEventListener('mousedown', mouseDownEvent, false);
         canvas.addEventListener('mousemove', mouseMoveEvent, false);
         canvas.addEventListener('mouseup', mouseUpEvent,false) ;
+
+        canvas.addEventListener('touchmove', touchMoveEvent, false);
+        canvas.addEventListener('touchend', touchEndEvent,false) ;
       }
-      
+
+
+    function touchMoveEvent(eventObj) {
+        eventObj.preventDefault();
+        var ev = eventObj.touches[0];
+
+        // We are not getting the touchStart event,
+        // for first touchMoveEvent
+        if (!selfPainter.isPaintStarted)
+            selfPainter.startDraw(ev.pageX,ev.pageY);
+        else
+            selfPainter.movePencil(ev.pageX,ev.pageY);
+    }
+
+
+    function touchEndEvent(eventObj) {
+        eventObj.preventDefault();
+        var ev = eventObj.changedTouches[0];
+        selfPainter.stopDraw(ev.pageX,ev.pageY);
+    }
+
     function mouseDownEvent(ev) {
     	selfPainter.startDraw(ev.pageX,ev.pageY);
     }  
@@ -95,7 +118,9 @@ this.stopDraw = function(x, y) {
           
     function mouseUpEvent(ev) {
     	selfPainter.stopDraw(ev.pageX,ev.pageY);
-    }      
+    }
+
+
       
     function getUser(userId) {
     	for (var i = 0; i < participantsPool.length; i++) {
@@ -108,7 +133,7 @@ this.stopDraw = function(x, y) {
     	return newUser;
     }
     
-    socket = new WebSocket("ws://10.0.0.7:8080", "echo-protocol");
+    socket = new WebSocket("ws://192.168.2.4:8080", "echo-protocol");
     if (socket == undefined)
     {
 	document.getElementById('errMessage').innerHtml = 'Web Socket Not Supported By your browser';
@@ -125,7 +150,6 @@ this.stopDraw = function(x, y) {
         	
 			var sender = getUser(point[0]);
         	var evtType = point[1];
-        	
 
         	if(evtType === 'Start')
         	{

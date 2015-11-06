@@ -1,12 +1,39 @@
 var WebSocketServer = require('websocket').server;
 var http = require('http');
+var fs = require('fs');
+var url = require('url');
 var connectionPool = [];
 
-var server = http.createServer(function(request, response) {
-    console.log((new Date()) + ' Received request for ' + request.url);
-    response.writeHead(404);
-    response.end();
+var server = http.createServer( function (request, response) {
+   console.log((new Date()) + ' Received request for ' + request.url);
+
+   // Parse the request containing file name
+   var pathname = url.parse(request.url).pathname;
+
+   // Print the name of the file for which request is made.
+   console.log("Request for " + pathname + " received.");
+
+   // Read the requested file content from file system
+   fs.readFile(pathname.substr(1), function (err, data) {
+      if (err) {
+         console.log(err);
+         // HTTP Status: 404 : NOT FOUND
+         // Content Type: text/plain
+         response.writeHead(404, {'Content-Type': 'text/html'});
+      }else{
+         //Page found
+         // HTTP Status: 200 : OK
+         // Content Type: text/plain
+         response.writeHead(200, {'Content-Type': 'text/html'});
+
+         // Write the content of the file to response body
+         response.write(data.toString());
+      }
+      // Send the response body
+      response.end();
+   });
 });
+
 server.listen(8080, function() {
     console.log((new Date()) + ' Server is listening on port 8080');
 });
@@ -31,6 +58,7 @@ wsServer.on('request', function(request) {
     }
 
     var connection = request.accept('echo-protocol', request.origin);
+    console.log(connection.socket);
     connectionPool.push(connection);
     connection.id = connectionPool.length;
 
